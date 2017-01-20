@@ -1,0 +1,115 @@
+﻿<Window x:Class="TelegramBot.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:TelegramBot"
+        mc:Ignorable="d"
+        Title="TelegramBot" Height="600" Width="800">
+    <Grid>
+        <TabControl x:Name="tc">
+            <TabItem x:Name="tiMonTwitch">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="3">Мониторинг twitch</TextBlock>
+                    </StackPanel>
+                </TabItem.Header>
+                <TabItem.Content>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" LastChildFill="True" VerticalAlignment="Top">
+                            <Grid  ShowGridLines="False">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="80"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="bStartTwitchMonitor" Grid.Row="0" Grid.Column="2" Content="Start Monitor" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="bStartTwitchMonitor_Click" Grid.RowSpan="2"/>
+                                <TextBox x:Name="tbUsers" Grid.Row="0" Grid.Column="1"/>
+                                <TextBox x:Name="tbChannel" Grid.Row="1" Grid.Column="1"/>
+                                <Label x:Name="lUsers" Content="Пользователи (разделитель ',')" Grid.Row="0"/>
+                                <Label x:Name="lChannel" Content="Twitch канал" Grid.Row="1"/>
+                            </Grid>
+                        </DockPanel>
+                        <DockPanel Grid.Row="1" LastChildFill="True" VerticalAlignment="Stretch">
+                            <TextBox x:Name="tbLogTwitch" Grid.Row="1" TextWrapping="Wrap" DockPanel.Dock="Top"/>
+                        </DockPanel>
+                    </Grid>
+                </TabItem.Content>
+            </TabItem>
+            <TabItem x:Name="tiNewItemsCSGO">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="3">Мониторинг новых итемов</TextBlock>
+                    </StackPanel>
+                </TabItem.Header>
+                <TabItem.Content>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="150" />
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" LastChildFill="True" Height="30" VerticalAlignment="Top">
+                            <Button DockPanel.Dock="Right" x:Name="bAuth" Width="80" Height="30" Content="Авторизация" Visibility="Visible" Click="bAuth_Click"/>
+                            <Button DockPanel.Dock="Right" x:Name="bAddSteamAccount" Width="80" Height="30" Content="Добавить" Click="bAddSteamProfile_Click" VerticalAlignment="Bottom" />
+                            <TextBox DockPanel.Dock="Left" x:Name="tbLink" MaxLength="250" Background="AliceBlue" />
+                        </DockPanel>
+                        <ScrollViewer Grid.Row="1" CanContentScroll="True" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Name="spContent" Orientation="Vertical" />
+                        </ScrollViewer>
+                        <TextBox Grid.Row="2" Name="tbLogSteam" />
+                    </Grid>
+                </TabItem.Content>
+            </TabItem>
+            <TabItem x:Name="tiMonitorMarket">
+                <TabItem.Header>
+                    <TextBlock Margin="3">Маркет монитор</TextBlock>
+                </TabItem.Header>
+                <TabItem.Content>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="30"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Column="1">
+                            <Button Name="bAddMarketItem" DockPanel.Dock="Right"  Width="50" Height="30" Click="bAddMarketItem_Click"/>
+                            <TextBox DockPanel.Dock="Left" x:Name="tbLinkMarket" MaxLength="250" Background="AliceBlue" />
+                        </DockPanel>
+                        <ScrollViewer Grid.Row="1">
+                            <WrapPanel Name="wpMarketItems"></WrapPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </TabItem.Content>
+            </TabItem>
+            <TabItem x:Name="tiLogs">
+                <TabItem.Header>
+                    <TextBlock Margin="3">Логи</TextBlock>
+                </TabItem.Header>
+                <TabItem.Content>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="30"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="250"></ColumnDefinition>
+                            <ColumnDefinition Width="*"></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+                        <Button Name="testbtn" Grid.Column="1" Width="50" HorizontalAlignment="Right" Click="testbtn_Click" Height="30" VerticalAlignment="Top"/>
+                        <Button Name="testbtn1" Grid.Column="0" Width="50" HorizontalAlignment="Right" Click="testbtn1_Click"/>
+                        <TextBox x:Name="tbLogError" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
+                    </Grid>
+                </TabItem.Content>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>
+    

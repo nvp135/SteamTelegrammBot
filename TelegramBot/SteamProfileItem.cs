@@ -77,7 +77,7 @@ namespace TelegramBot
         Timer t = new Timer()
         {
             Enabled = false,
-            Interval = 60000
+            Interval = 90 * 1000
         };
 
         public Button bDelete = new Button()
@@ -227,7 +227,10 @@ namespace TelegramBot
             ico.Source = HelpFunctions.GetBitmap(urlImg);
             tbItemName.Text = name;
             tg.SendMessage($"{accountNick} получил CS:GO итем {name}");
-            tg.SendPicture(urlImg.Replace("/96fx96f", ""));
+            if (urlImg != "empty")
+            {
+                tg.SendPicture(urlImg.Replace("/96fx96f", ""));
+            }
             tbNick.Text = $"Account nick {accountNick} / Last updated {DateTime.Now}";
         }
     }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.Http;
 using System.Windows.Media.Imaging;
+using System.Threading.Tasks;
 
 namespace TelegramBot
 {
@@ -13,17 +14,15 @@ namespace TelegramBot
         /// <param name="link">Ссылка на страницу</param>
         public static string LoadPage(string link)
         {
-            string result;
             using (var client = new HttpClient())
             {
-                result = client
+                return client
                     .GetAsync(link)
                     .Result
                     .Content
                     .ReadAsStringAsync()
                     .Result;
             }
-            return result;
         }
 
         public static BitmapImage GetBitmap(string urlImg)

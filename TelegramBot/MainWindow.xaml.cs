@@ -1,13 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Windows;
+using System.IO;
 using System.Linq;
-using System.Windows.Controls;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Timers;
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
+using System.Xml;
 using TelegramBot.Properties;
-using System.Windows.Media;
+using System.Threading;
+using System.Net.Http;
 
 namespace TelegramBot
 {
@@ -16,12 +20,14 @@ namespace TelegramBot
     /// </summary>
     public partial class MainWindow : Window
     {
+        CancellationTokenSource cts;
         Telegram tg;
         Twitch tw;
         List<SteamProfileItem> profilesItems = new List<SteamProfileItem>();
+        List<SteamMarketItem> marketItems = new List<SteamMarketItem>();
 
         bool auth;
-        Timer tCheckAuth = new Timer()
+        System.Timers.Timer tCheckAuth = new System.Timers.Timer()
         {
             Interval = 60000,
             Enabled = false
@@ -34,13 +40,144 @@ namespace TelegramBot
             tCheckAuth.Elapsed += tCheckAuth_Tick;
             CheckAuth();
             tCheckAuth.Enabled = true;
+            LoadTwitchSettings();
+        }
+
+        private void LoadTwitchSettings()
+        {
+            string configPath = $"{Directory.GetCurrentDirectory()}\\config.xml";
+            if (!File.Exists(configPath))
+            {
+                SaveTwitchSettings();
+            }
+            try
+            {
+                XmlDocument configXmlDocument = new XmlDocument();
+                configXmlDocument.Load(configPath);
+                XmlNodeList xnl = configXmlDocument.GetElementsByTagName("TwitchChannel");
+                if (xnl != null && xnl.Count == 1)
+                {
+                    tbTwitchChannel.Text = xnl[0].InnerText.Trim();
+                }
+                xnl = configXmlDocument.GetElementsByTagName("TwitchUsers");
+                if (xnl != null && xnl.Count == 1)
+                {
+                    tbTwitchUsers.Text = xnl[0].InnerText.Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+        }
+
+        private void SaveTwitchSettings()
+        {
+            string configPath = $"{Directory.GetCurrentDirectory()}\\config.xml";
+            using (XmlWriter writer = XmlWriter.Create(configPath))
+            {
+                writer.WriteStartDocument();
+                writer.WriteStartElement("TwitchSettings");
+
+                writer.WriteElementString("TwitchUsers", tbTwitchUsers.Text);
+                writer.WriteElementString("TwitchChannel", tbTwitchChannel.Text);
+
+                writer.WriteEndElement();
+                writer.WriteEndDocument();
+            }
+        }
+
+        List<string> ParseItemMarket(string page)
+        {
+            if (page != "")
+            {
+                List<string> result = new List<string>()
+                {
+                    "", "", "", ""
+                };
+                Regex rId = new Regex("Market_LoadOrderSpread\\((.*)\\);");
+                Match mId = rId.Match(page);
+                result[0] = $"http://steamcommunity.com/market/itemordershistogram?country=RU&language=english&currency=5&item_nameid={mId.Groups[1].Value.Trim()}&two_factor=0";
+                Regex rIcoUri = new Regex("\"icon_url\":\"([^\"]*)");
+                Match mIcoUri = rIcoUri.Match(page);
+                result[1] = $"http://steamcommunity-a.akamaihd.net/economy/image/{mIcoUri.Groups[1].Value}/60fx60f";
+                Regex rName = new Regex("<span class=\"market_listing_item_name\" style=\"\">(.*)</span><br/>");
+                Match mName = rName.Match(page);
+                result[2] = mName.Groups[1].Value.Trim();
+                result[3] = mId.Groups[1].Value.Trim();
+
+                //Regex rSpamResponse = new Regex( = "<h3>You've made too many requests recently. Please wait and try your request again later.</h3>");
+
+                return result;
+            }
+            return null;
+        }
+
+        async Task<string> CheckMarketItemAsync(string url, HttpClient client, CancellationToken ct)
+        {
+            try
+            {
+                HttpResponseMessage response = await client.GetAsync(url, ct);
+                var task = response.Content.ReadAsStringAsync();
+                string page = await task;
+                return page;
+            }
+            catch (Exception ex)
+            {
+                tbLogSteam.AppendText(ex.Message + Environment.NewLine);
+            }
+            return "";
+        }
+
+        async Task CheckMarketItemsHistory(CancellationToken ct)
+        {
+            try
+            {
+                var itemsMarket = File.ReadAllText("itemsmarket").Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+                if (itemsMarket != null)
+                {
+                    var client = new HttpClient();
+
+                    IEnumerable<Task<string>> loadItemsQuery =
+                        from url in itemsMarket select CheckMarketItemAsync(url, client, ct);
+
+                    List<Task<string>> downloadTasks = loadItemsQuery.ToList();
+
+                    while (downloadTasks.Count > 0)
+                    {
+                        Task<string> firstFinishedTask = await Task.WhenAny(downloadTasks);
+                        downloadTasks.Remove(firstFinishedTask);
+                        List<string> parseItem = ParseItemMarket(firstFinishedTask.Result);
+                        if (parseItem != null)
+                        {
+                            AddSteamMarketItem(parseItem);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                tbLogError.Text += $"{DateTime.Now} Возникла ошибка при чтении файла с товарами для отслеживания: {ex.Message}{Environment.NewLine}";
+            }
         }
 
         private void bStartTwitchMonitor_Click(object sender, RoutedEventArgs e)
         {
-            List<string> users = new List<string>(tbUsers.Text.Split(',').Where(x => x.Length > 0));
-            tw = new Twitch(tbChannel.Text, users, tbLogSteam);
-            tw.CheckViewers();
+            if (tw == null)
+            {
+                SaveTwitchSettings();
+                List<string> users = new List<string>(tbTwitchUsers.Text.Split(',').Where(x => x.Length > 0));
+                tw = new Twitch(tbTwitchChannel.Text, users, tbLogTwitch);
+                tw.Start();
+                bStartTwitchMonitor.Content = "Stop Monitor";
+            }
+            else
+            {
+                tw.Stop();
+                tw = null;
+                bStartTwitchMonitor.Content = "Start Monitor";
+            }
+
         }
 
         private void bTest_Click(object sender, RoutedEventArgs e)
@@ -77,7 +214,7 @@ namespace TelegramBot
                         if (!String.IsNullOrEmpty(res.itemId) && !String.IsNullOrEmpty(res.picUrl) && !String.IsNullOrEmpty(res.itemName))
                         {
                             SteamProfileItem item = new SteamProfileItem(link, accountNick, res.picUrl, res.itemName, res.itemId, tbLogSteam);
-                            item.bDelete.Click += Del;
+                            item.bDelete.Click += DelAccount;
                             profilesItems.Add(item);
                             spContent.Children.Add(item);
                         }
@@ -103,7 +240,7 @@ namespace TelegramBot
             tbLink.Text = "";
         }
 
-        private void Del(object sender, RoutedEventArgs e)
+        private void DelAccount(object sender, RoutedEventArgs e)
         {
             foreach (SteamProfileItem item in profilesItems)
             {
@@ -111,6 +248,20 @@ namespace TelegramBot
                 {
                     spContent.Children.Remove(item);
                     profilesItems.Remove(item);
+                    break;
+                }
+            }
+        }
+
+        private void DelItem(object sender, RoutedEventArgs e)
+        {
+            foreach (SteamMarketItem item in marketItems)
+            {
+                if ((Button)sender == item.bDelete)
+                {
+                    item.Dispose();
+                    wpMarketItems.Children.Remove(item.border);
+                    marketItems.Remove(item);
                     break;
                 }
             }
@@ -143,7 +294,10 @@ namespace TelegramBot
             };
             try
             {
-                string page = HelpFunctions.LoadPage(link);
+                var res = Task.Run(() => HelpFunctions.LoadPage(link));
+                res.Wait();
+                string page = res.Result;
+                //string page = HelpFunctions.LoadPage(link);
                 if (page != "")
                 {
                     Regex rId = new Regex("Market_LoadOrderSpread\\((.*)\\);");
@@ -162,6 +316,17 @@ namespace TelegramBot
                 tbLogSteam.AppendText(ex.Message + Environment.NewLine);
             }
             return result;
+        }
+
+        private void AddSteamMarketItem(List<string> itemInfo)
+        {
+            if (!String.IsNullOrEmpty(itemInfo[0]) && !String.IsNullOrEmpty(itemInfo[1]) && !String.IsNullOrEmpty(itemInfo[2]))
+            {
+                SteamMarketItem si = new SteamMarketItem(itemInfo);
+                si.bDelete.Click += DelItem;
+                wpMarketItems.Children.Add(si.border);
+                marketItems.Add(si);
+            }
         }
 
         private void testbtn_Click(object sender, RoutedEventArgs e)
@@ -208,12 +373,45 @@ namespace TelegramBot
 
         private void bAddMarketItem_Click(object sender, RoutedEventArgs e)
         {
-            List<string> itemInfo = CheckMarketId(tbLinkMarket.Text);
-            if(!String.IsNullOrEmpty(itemInfo[0]) && !String.IsNullOrEmpty(itemInfo[1]) && !String.IsNullOrEmpty(itemInfo[2]))
+            List<string> result = null;
+            string link = tbLinkMarket.Text;
+            Thread t = new Thread(() => { result = AddMarketItem(link); });
+            t.Start();
+            t.Join();
+            if (result != null)
+                AddSteamMarketItem(result);
+
+            tbLinkMarket.Text = String.Empty;
+        }
+
+        private List<string> AddMarketItem(string link)
+        {
+            if (link.StartsWith("http"))
             {
-                SteamMarketItem si = new SteamMarketItem(itemInfo);
-                wpMarketItems.Children.Add(si.border);
+                link = link.Replace("https://", "http://");
             }
+            else
+            {
+                return null;
+            }
+            return CheckMarketId(link);
+            
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            
+        }
+
+        async private void Window_ContentRendered(object sender, EventArgs e)
+        {
+            cts = new CancellationTokenSource();
+            await CheckMarketItemsHistory(cts.Token);
+            cts = null;
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
 
         }
     }

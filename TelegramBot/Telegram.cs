@@ -12,7 +12,14 @@ namespace TelegramBot
 
         Telegram()
         {
-            token = File.ReadAllText("tokentelegram");
+            try
+            {
+                token = File.ReadAllText("tokentelegram");
+            }
+            catch (System.Exception)
+            {
+
+            }
             userId = "1597881";
         }
 

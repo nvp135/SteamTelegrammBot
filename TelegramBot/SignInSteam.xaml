@@ -5,7 +5,7 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       xmlns:local="clr-namespace:TelegramBot"
       mc:Ignorable="d" 
-      Title="SignInSteam" Height="500" Width="700" Initialized="Window_Initialized">
+      Title="SignInSteam" Height="500" Width="700" Initialized="Window_Initialized" Closed="Window_Closed">
 
     <Grid>
         <WebBrowser Name="wbAuth" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Source="{x:Null}" LoadCompleted="wbAuth_LoadCompleted" />

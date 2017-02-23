@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TelegramBot"
         mc:Ignorable="d"
-        Title="TelegramBot" Height="600" Width="800">
+        Title="TelegramBot" Height="768" Width="1024" ContentRendered="Window_ContentRendered" Closing="Window_Closing">
     <Grid>
         <TabControl x:Name="tc">
             <TabItem x:Name="tiMonTwitch">
@@ -32,8 +32,8 @@
                                     <ColumnDefinition Width="80"/>
                                 </Grid.ColumnDefinitions>
                                 <Button x:Name="bStartTwitchMonitor" Grid.Row="0" Grid.Column="2" Content="Start Monitor" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="bStartTwitchMonitor_Click" Grid.RowSpan="2"/>
-                                <TextBox x:Name="tbUsers" Grid.Row="0" Grid.Column="1"/>
-                                <TextBox x:Name="tbChannel" Grid.Row="1" Grid.Column="1"/>
+                                <TextBox x:Name="tbTwitchUsers" Grid.Row="0" Grid.Column="1"/>
+                                <TextBox x:Name="tbTwitchChannel" Grid.Row="1" Grid.Column="1"/>
                                 <Label x:Name="lUsers" Content="Пользователи (разделитель ',')" Grid.Row="0"/>
                                 <Label x:Name="lChannel" Content="Twitch канал" Grid.Row="1"/>
                             </Grid>
@@ -80,7 +80,7 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <DockPanel Grid.Column="1">
-                            <Button Name="bAddMarketItem" DockPanel.Dock="Right"  Width="50" Height="30" Click="bAddMarketItem_Click"/>
+                            <Button Name="bAddMarketItem" DockPanel.Dock="Right"  Width="50" Click="bAddMarketItem_Click"/>
                             <TextBox DockPanel.Dock="Left" x:Name="tbLinkMarket" MaxLength="250" Background="AliceBlue" />
                         </DockPanel>
                         <ScrollViewer Grid.Row="1">

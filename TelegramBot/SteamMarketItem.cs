@@ -12,20 +12,71 @@ using System.Collections.Generic;
 
 namespace TelegramBot
 {
-    class SteamMarketItem : Grid
+    class SteamMarketItem : Grid, IDisposable
     {
         TextBlockValues textblockValues;
         List<PriceDate> lPrices;
         readonly string jsonLink, itemName;
 
+        TextBlock tbItemName = new TextBlock()
+        {
+            FontSize = 8,
+            FontFamily = new FontFamily("Consolas"),
+            TextWrapping = TextWrapping.Wrap,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+
+        TextBlock tbCurrentPrice = new TextBlock()
+        {
+            TextWrapping = TextWrapping.Wrap
+        };
+
+        TextBlock tbTen = new TextBlock()
+        {
+            TextWrapping = TextWrapping.Wrap
+        };
+
+        TextBlock tbThirty = new TextBlock()
+        {
+            TextWrapping = TextWrapping.Wrap
+        };
+
+        TextBlock tbHour = new TextBlock()
+        {
+            TextWrapping = TextWrapping.Wrap
+        };
+
+        Image ico = new Image();
+
+        public Button bDelete = new Button()
+        {
+            Width = 10,
+            Background = new SolidColorBrush(Colors.Red),
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+
+        public Border border = new Border()
+        {
+            BorderBrush = Brushes.Black,
+            Background = Brushes.CadetBlue,
+            BorderThickness = new Thickness(1)
+        };
+
+        Timer t = new Timer()
+        {
+            Interval = 60 * 1000,
+            Enabled = false
+        };
+
         public SteamMarketItem(List<string> itemInfo)
         {
             border.Child = this;
-            this.Width = 140;
+            this.Width = 150;
             this.Height = 100;
             t.Elapsed += t_Tick;
 
-            textblockValues = new TextBlockValues();
+            textblockValues = new TextBlockValues(itemInfo[3]);
             lPrices = new List<PriceDate>();
 
             Style tbStyle = new Style(typeof(TextBlock));
@@ -34,10 +85,11 @@ namespace TelegramBot
             tbStyle.Setters.Add(new Setter { Property = Control.HorizontalAlignmentProperty, Value = HorizontalAlignment.Stretch });
             tbStyle.Setters.Add(new Setter { Property = Control.VerticalAlignmentProperty, Value = VerticalAlignment.Center });
 
-            tbPrice.Style = tbStyle;
-            tb1.Style = tbStyle;
-            tb2.Style = tbStyle;
-            tb3.Style = tbStyle;
+
+            tbCurrentPrice.Style = tbStyle;
+            tbTen.Style = tbStyle;
+            tbThirty.Style = tbStyle;
+            tbHour.Style = tbStyle;
 
             this.ColumnDefinitions.Add(new ColumnDefinition()
             {
@@ -45,7 +97,7 @@ namespace TelegramBot
             });
             this.ColumnDefinitions.Add(new ColumnDefinition()
             {
-                Width = new GridLength(80, GridUnitType.Pixel)
+                Width = new GridLength(90, GridUnitType.Pixel)
             });
 
             Grid gDescr = new Grid();
@@ -99,64 +151,15 @@ namespace TelegramBot
             SetRow(bDelete, 0);
             gPrices.Children.Add(bDelete);
 
-            SetRow(tbPrice, 2);
-            gPrices.Children.Add(tbPrice);
-
-            SetRow(tb1, 3);
-            gPrices.Children.Add(tb1);
-
-            SetRow(tb2, 4);
-            gPrices.Children.Add(tb2);
-
-            SetRow(tb3, 5);
-            gPrices.Children.Add(tb3);
-
             itemName = itemInfo[2];
             tbItemName.Text = itemName;
             ico.Source = HelpFunctions.GetBitmap(itemInfo[1]);
             jsonLink = itemInfo[0];
 
-            DataContext = this;
-            tbPrice.SetBinding(TextBlock.TextProperty, new Binding()
-            {
-                Path = new PropertyPath("Price"),
-                Source = textblockValues
-            });
-            tb1.SetBinding(TextBlock.TextProperty, new Binding()
-            {
-                Path = new PropertyPath("TenMinutes"),
-                Source = textblockValues
-            });
-            tb2.SetBinding(TextBlock.TextProperty, new Binding()
-            {
-                Path = new PropertyPath("ThirtyMinutes"),
-                Source = textblockValues
-            });
-            tb3.SetBinding(TextBlock.TextProperty, new Binding()
-            {
-                Path = new PropertyPath("OneHour"),
-                Source = textblockValues
-            });
-            tbPrice.SetBinding(TextBlock.BackgroundProperty, new Binding()
-            {
-                Path = new PropertyPath("PriceColor"),
-                Source = textblockValues
-            });
-            tb1.SetBinding(TextBlock.BackgroundProperty, new Binding()
-            {
-                Path = new PropertyPath("TenMinutesColor"),
-                Source = textblockValues
-            });
-            tb2.SetBinding(TextBlock.BackgroundProperty, new Binding()
-            {
-                Path = new PropertyPath("ThirtyMinutesColor"),
-                Source = textblockValues
-            });
-            tb3.SetBinding(TextBlock.BackgroundProperty, new Binding()
-            {
-                Path = new PropertyPath("OneHourColor"),
-                Source = textblockValues
-            });
+            SetUpTextBlock(gPrices, 0, 2, tbStyle, "Price", "PriceColor", "IReceivePrice");
+            SetUpTextBlock(gPrices, 0, 3, tbStyle, "TenMinutes", "TenMinutesColor");
+            SetUpTextBlock(gPrices, 0, 4, tbStyle, "ThirtyMinutes", "ThirtyMinutesColor");
+            SetUpTextBlock(gPrices, 0, 5, tbStyle, "OneHour", "OneHourColor");
 
             PriceDate res;
             string prefix, suffix;
@@ -171,6 +174,53 @@ namespace TelegramBot
             t.Enabled = true;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="grid"></param>
+        /// <param name="col"></param>
+        /// <param name="row"></param>
+        /// <param name="tb"></param>
+        /// <param name="style"></param>
+        /// <param name="propertyTextName"></param>
+        /// <param name="propertyBackgroungName"></param>
+        private void SetUpTextBlock(Grid grid, int col, int row, Style style, string propTextName, string propBackgroungName, string propToolTipText = "")
+        {
+            var tb = new TextBlock()
+            {
+                TextWrapping = TextWrapping.Wrap
+            };
+            tb.Style = style;
+            SetRow(tb, row);
+            SetColumn(tb, col);
+            grid.Children.Add(tb);
+
+            DataContext = this;
+
+            tb.SetBinding(TextBlock.TextProperty, new Binding()
+            {
+                Path = new PropertyPath(propTextName),
+                Source = textblockValues
+            });
+
+            tb.SetBinding(TextBlock.BackgroundProperty, new Binding()
+            {
+                Path = new PropertyPath(propBackgroungName),
+                Source = textblockValues
+            });
+
+            ToolTip toolTip = new ToolTip();
+
+            var tbtt = new TextBlock();
+            tbtt.SetBinding(TextBlock.TextProperty, new Binding()
+            {
+                Path = new PropertyPath(propToolTipText),
+                Source = textblockValues
+            });
+            toolTip.Content = tbtt;
+            tb.ToolTip = toolTip;
+        }
+
         private void t_Tick(object source, ElapsedEventArgs e)
         {
             PriceDate res; string prefix, suffix;
@@ -179,7 +229,14 @@ namespace TelegramBot
             {
                 lPrices.Insert(0, res); 
             }
-            UpdatePrices();
+            try
+            {
+                UpdatePrices();
+            }
+            catch (Exception ex)
+            {
+                Logger.Write($"{DateTime.Now}: {ex.Message}");
+            }
         }
 
         private void CheckPrice(out PriceDate pd, out string prefix, out string suffix)
@@ -202,9 +259,9 @@ namespace TelegramBot
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
+                Logger.Write($"{DateTime.Now}: {ex.Message}");
             }
         }
 
@@ -229,60 +286,20 @@ namespace TelegramBot
                 {
                     textblockValues.OneHour = hour.price.ToString();
                 }
-
             }
         }
 
-        TextBlock tbItemName = new TextBlock()
+        public void Dispose()
         {
-            FontSize = 8,
-            FontFamily = new FontFamily("Consolas"),
-            TextWrapping = TextWrapping.Wrap,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
+            t.Enabled = false;
+        }
 
-        TextBlock tbPrice = new TextBlock()
+        ~SteamMarketItem()
         {
-            TextWrapping = TextWrapping.Wrap
-        };
-
-        TextBlock tb1 = new TextBlock()
-        {
-            TextWrapping = TextWrapping.Wrap
-        };
-
-        TextBlock tb2 = new TextBlock()
-        {
-            TextWrapping = TextWrapping.Wrap
-        };
-
-        TextBlock tb3 = new TextBlock()
-        {
-            TextWrapping = TextWrapping.Wrap
-        };
-
-        Image ico = new Image();
-
-        Button bDelete = new Button()
-        {
-            Width = 10,
-            Background = new SolidColorBrush(Colors.Red),
-            HorizontalAlignment = HorizontalAlignment.Right
-        };
-
-        public Border border = new Border()
-        {
-            BorderBrush = Brushes.Black,
-            Background = Brushes.CadetBlue,
-            BorderThickness = new Thickness(1)
-        };
-
-        Timer t = new Timer()
-        {
-            Interval = 30 * 1000,
-            Enabled = false
-        };
+#if DEBUG
+            Logger.Write($"{itemName} has been deleted.");
+#endif
+        }
     }
 
     class PriceDate
@@ -299,6 +316,8 @@ namespace TelegramBot
 
     class TextBlockValues: INotifyPropertyChanged
     {
+        DBHelper dbh = DBHelper.Init();
+
         public double startPrice = 0.0;
         public string pricePreffix;
         public string priceSuffix;
@@ -308,58 +327,91 @@ namespace TelegramBot
         private double thirtyMinutes = 0.0;
         private double oneHour = 0.0;
 
+        private int percentPrice = 0;
+        private int percentTenMinutes = 0;
+        private int percentThirtyMinutes = 0;
+        private int percentOneHour = 0;
+
         private Brush priceColor = Brushes.White;
         private Brush tenMinutesColor = Brushes.White;
         private Brush thirtyMinutesColor = Brushes.White;
         private Brush oneHourColor = Brushes.White;
 
+        private int id;
+        private readonly double multiplier = 0.8696;
+
+        public TextBlockValues(string id)
+        {
+            this.id = Convert.ToInt32(id);
+        }
+
         public string Price
         {
-            get { return $"{pricePreffix}{price}{priceSuffix}"; }
+            get { return $"{pricePreffix}{price}{priceSuffix}({percentPrice}%)"; }
             set
             {
-                double x = Convert.ToDouble(value);
-                PriceColor = GetColor(Convert.ToInt32((x - startPrice) / (startPrice / x)));
+                if (price != Convert.ToDouble(value))
+                {
+                    dbh.Insert($"insert into [Items] ([market_id], [dt], [price]) values ({id}, '{DateTime.Now}', '{value}')");
+                }
                 price = Convert.ToDouble(value);
+                percentPrice = Convert.ToInt32((price - startPrice) / (startPrice / 100));
+                PriceColor = GetColor(percentPrice);
                 RaisePropertyChanged("Price");
+                IReceivePrice = (price * multiplier).ToString();
+                RaisePropertyChanged("IReceivePrice");
             }
         }
+
+        public string IReceivePrice { get; set; }
 
         public string TenMinutes
         {
-            get { return $"{pricePreffix}{tenMinutes}{priceSuffix}"; }
+            get { return $"{pricePreffix}{tenMinutes}{priceSuffix}({percentTenMinutes}%)"; }
             set
             {
-                double x = Convert.ToDouble(value);
-                TenMinutesColor = GetColor(Convert.ToInt32((x - price) / (price / x)));
                 tenMinutes = Convert.ToDouble(value);
+                percentTenMinutes = Convert.ToInt32((tenMinutes - price) / (price / 100));
+                TenMinutesColor = GetColor(percentTenMinutes);
                 RaisePropertyChanged("TenMinutes");
+                IReceiveTenMinutes = (tenMinutes * multiplier).ToString();
+                RaisePropertyChanged("IReceiveTenMinutes");
             }
         }
+
+        public string IReceiveTenMinutes { get; set; }
 
         public string ThirtyMinutes
         {
-            get { return $"{pricePreffix}{thirtyMinutes}{priceSuffix}"; }
+            get { return $"{pricePreffix}{thirtyMinutes}{priceSuffix}({percentThirtyMinutes}%)"; }
             set
             {
-                double x = Convert.ToDouble(value);
-                ThirtyMinutesColor = GetColor(Convert.ToInt32((x - price) / (price / x)));
                 thirtyMinutes = Convert.ToDouble(value);
+                percentThirtyMinutes = Convert.ToInt32((thirtyMinutes - price) / (price / 100));
+                ThirtyMinutesColor = GetColor(percentThirtyMinutes);
                 RaisePropertyChanged("ThirtyMinutes");
+                IReceiveThirtyMinutes = (thirtyMinutes * multiplier).ToString();
+                RaisePropertyChanged("IReceiveThirtyMinutes");
             }
         }
 
+        public string IReceiveThirtyMinutes { get; set; }
+
         public string OneHour
         {
-            get { return $"{pricePreffix}{oneHour}{priceSuffix}"; }
+            get { return $"{pricePreffix}{oneHour}{priceSuffix}({percentOneHour}%)"; }
             set
             {
-                double x = Convert.ToDouble(value);
-                OneHourColor = GetColor(Convert.ToInt32((x - price) / (price / x)));
                 oneHour = Convert.ToDouble(value);
+                percentOneHour = Convert.ToInt32((oneHour - price) / (price / 100));
+                OneHourColor = GetColor(percentOneHour);
                 RaisePropertyChanged("OneHour");
+                IReceiveOneHour = (oneHour * multiplier).ToString();
+                RaisePropertyChanged("IReceiveOneHour");
             }
         }
+
+        public string IReceiveOneHour { get; set; }
 
         public Brush PriceColor
         {
@@ -405,9 +457,9 @@ namespace TelegramBot
         {
             if (dif < 0)
                 return Brushes.Yellow;
-            else if (dif < 5)
-                return Brushes.White;
             else if (dif < 10)
+                return Brushes.White;
+            else if (dif < 20)
                 return Brushes.GreenYellow;
             else
                 return Brushes.Pink;

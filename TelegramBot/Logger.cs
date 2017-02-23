@@ -7,28 +7,35 @@ using System.Threading;
 
 namespace TelegramBot
 {
-  public static class Logger
-  {
-    private static readonly object LogLock = new object();
-
-    private static readonly string ExceptionPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @".\error.log";
-
-    public static void Exception(Exception ex, params string[] messages)
+    public static class Logger
     {
-      var contents = string.Concat(DateTime.Now, "   ", string.Join(Environment.NewLine, messages),
-        Environment.NewLine, ex.ToString(), Environment.NewLine);
-      Write(contents, ExceptionPath);
-    }
+        private static readonly object LogLock = new object();
 
-    public static void Write(string contents, string path = "C:\\Projects\\logTelegramBot.txt")
-    {
-      Console.WriteLine(contents);
-      using (TimedLock.Lock(LogLock))
-      {
-        File.AppendAllText(path, contents, Encoding.UTF8);
-      }
+        private static readonly string ExceptionPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @".\error.log";
+
+        public static void Exception(Exception ex, params string[] messages)
+        {
+          var contents = string.Concat(DateTime.Now, "   ", string.Join(Environment.NewLine, messages),
+            Environment.NewLine, ex.ToString(), Environment.NewLine);
+          Write(contents, ExceptionPath);
+        }
+
+        public static void Write(string contents)
+        {
+            string path = $"{Directory.GetCurrentDirectory()}\\log.txt";
+            Write(contents, path);
+        }
+
+        public static void Write(string contents, string path)
+        {
+            Console.WriteLine(contents);
+            string text = $"{DateTime.Now} : {contents}{Environment.NewLine}";
+            using (TimedLock.Lock(LogLock))
+            {
+                File.AppendAllText(path, text, Encoding.UTF8);
+            }
+        }
     }
-  }
 
 
   // Thanks to Eric Gunnerson for recommending this be a struct rather

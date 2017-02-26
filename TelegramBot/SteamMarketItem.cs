@@ -157,9 +157,9 @@ namespace TelegramBot
             jsonLink = itemInfo[0];
 
             SetUpTextBlock(gPrices, 0, 2, tbStyle, "Price", "PriceColor", "IReceivePrice");
-            SetUpTextBlock(gPrices, 0, 3, tbStyle, "TenMinutes", "TenMinutesColor");
-            SetUpTextBlock(gPrices, 0, 4, tbStyle, "ThirtyMinutes", "ThirtyMinutesColor");
-            SetUpTextBlock(gPrices, 0, 5, tbStyle, "OneHour", "OneHourColor");
+            SetUpTextBlock(gPrices, 0, 3, tbStyle, "TenMinutes", "TenMinutesColor", "IReceiveTenMinutes");
+            SetUpTextBlock(gPrices, 0, 4, tbStyle, "ThirtyMinutes", "ThirtyMinutesColor", "IReceiveThirtyMinutes");
+            SetUpTextBlock(gPrices, 0, 5, tbStyle, "OneHour", "OneHourColor", "IReceiveOneHour");
 
             PriceDate res;
             string prefix, suffix;
@@ -175,16 +175,16 @@ namespace TelegramBot
         }
 
         /// <summary>
-        /// 
+        /// Добавляет TextBlock на указанный grid, в указанные колонку col и строку row. Задает стиль style. Биндит данные по именам (propTextName, PropBackgroundName, propToolTipText) к классу с ценами.
         /// </summary>
-        /// <param name="grid"></param>
-        /// <param name="col"></param>
-        /// <param name="row"></param>
-        /// <param name="tb"></param>
-        /// <param name="style"></param>
-        /// <param name="propertyTextName"></param>
-        /// <param name="propertyBackgroungName"></param>
-        private void SetUpTextBlock(Grid grid, int col, int row, Style style, string propTextName, string propBackgroungName, string propToolTipText = "")
+        /// <param name="grid">Таблица на которую надо ддобавить TextBlock</param>
+        /// <param name="col">Колонка</param>
+        /// <param name="row">Строка</param>
+        /// <param name="style">Стиль</param>
+        /// <param name="propTextName">Имя свойства текста в TextBlock</param>
+        /// <param name="propBackgroungName">Имя свойства цвета в TexBlock</param>
+        /// <param name="propToolTipText">Имя свойства ToolTip в TextBlock</param>
+        private void SetUpTextBlock(Grid grid, int col, int row, Style style, string propTextName, string propBackgroungName, string propToolTipText)
         {
             var tb = new TextBlock()
             {
@@ -338,7 +338,7 @@ namespace TelegramBot
         private Brush oneHourColor = Brushes.White;
 
         private int id;
-        private readonly double multiplier = 0.8696;
+        private static readonly double multiplier = 0.8697;
 
         public TextBlockValues(string id)
         {
@@ -358,7 +358,7 @@ namespace TelegramBot
                 percentPrice = Convert.ToInt32((price - startPrice) / (startPrice / 100));
                 PriceColor = GetColor(percentPrice);
                 RaisePropertyChanged("Price");
-                IReceivePrice = (price * multiplier).ToString();
+                IReceivePrice = (price * multiplier).ToString($"{pricePreffix}0.00{priceSuffix}");
                 RaisePropertyChanged("IReceivePrice");
             }
         }
@@ -374,7 +374,7 @@ namespace TelegramBot
                 percentTenMinutes = Convert.ToInt32((tenMinutes - price) / (price / 100));
                 TenMinutesColor = GetColor(percentTenMinutes);
                 RaisePropertyChanged("TenMinutes");
-                IReceiveTenMinutes = (tenMinutes * multiplier).ToString();
+                IReceiveTenMinutes = (tenMinutes * multiplier).ToString($"{pricePreffix}0.00{priceSuffix}");
                 RaisePropertyChanged("IReceiveTenMinutes");
             }
         }
@@ -390,7 +390,7 @@ namespace TelegramBot
                 percentThirtyMinutes = Convert.ToInt32((thirtyMinutes - price) / (price / 100));
                 ThirtyMinutesColor = GetColor(percentThirtyMinutes);
                 RaisePropertyChanged("ThirtyMinutes");
-                IReceiveThirtyMinutes = (thirtyMinutes * multiplier).ToString();
+                IReceiveThirtyMinutes = (thirtyMinutes * multiplier).ToString($"{pricePreffix}0.00{priceSuffix}");
                 RaisePropertyChanged("IReceiveThirtyMinutes");
             }
         }
@@ -406,7 +406,7 @@ namespace TelegramBot
                 percentOneHour = Convert.ToInt32((oneHour - price) / (price / 100));
                 OneHourColor = GetColor(percentOneHour);
                 RaisePropertyChanged("OneHour");
-                IReceiveOneHour = (oneHour * multiplier).ToString();
+                IReceiveOneHour = (oneHour * multiplier).ToString($"{pricePreffix}0.00{priceSuffix}");
                 RaisePropertyChanged("IReceiveOneHour");
             }
         }

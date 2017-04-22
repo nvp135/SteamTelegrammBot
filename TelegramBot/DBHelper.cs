@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
 using ADOX;
+using System.Collections;
+using System.Timers;
 
 namespace TelegramBot
 {
@@ -10,6 +12,7 @@ namespace TelegramBot
         readonly string dbPath = "database\\db.mdb";
         readonly string connectionString;
         ADODB.Connection conn;
+        public static object lockObj = new object();
 
         DBHelper()
         {
@@ -36,14 +39,20 @@ namespace TelegramBot
         {
             try
             {
+                System.Threading.Monitor.Enter(lockObj);
                 object ret;
                 conn.Open(connectionString, "", "", -1);
                 conn.Execute(query, out ret, 0);
-                conn.Close();
             }
             catch (Exception ex)
             {
-                
+                string error = "Ошибка при инсерте в БД";
+                Logger.Write($"\n{error}:\n{new string('-', 10)}\n{ex.Message}\n{new string('-', 10)}");
+            }
+            finally
+            {
+                conn.Close();
+                System.Threading.Monitor.Exit(lockObj);
             }
         }
 

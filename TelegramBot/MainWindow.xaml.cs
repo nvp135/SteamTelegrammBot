@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Xml;
+using System.Xml.Linq;
 using TelegramBot.Properties;
 using System.Threading;
 using System.Net.Http;
@@ -26,7 +27,10 @@ namespace TelegramBot
         List<SteamProfileItem> profilesItems = new List<SteamProfileItem>();
         List<SteamMarketItem> marketItems = new List<SteamMarketItem>();
 
-        bool auth;
+        readonly string xmlItemsMarketName = "ItemsMarket.xml";
+
+        bool auth, marketItemListChange;
+
         System.Timers.Timer tCheckAuth = new System.Timers.Timer()
         {
             Interval = 60000,
@@ -40,6 +44,7 @@ namespace TelegramBot
             tCheckAuth.Elapsed += tCheckAuth_Tick;
             CheckAuth();
             tCheckAuth.Enabled = true;
+            marketItemListChange = false;
             LoadTwitchSettings();
         }
 
@@ -84,80 +89,6 @@ namespace TelegramBot
 
                 writer.WriteEndElement();
                 writer.WriteEndDocument();
-            }
-        }
-
-        List<string> ParseItemMarket(string page)
-        {
-            if (page != "")
-            {
-                List<string> result = new List<string>()
-                {
-                    "", "", "", ""
-                };
-                Regex rId = new Regex("Market_LoadOrderSpread\\((.*)\\);");
-                Match mId = rId.Match(page);
-                result[0] = $"http://steamcommunity.com/market/itemordershistogram?country=RU&language=english&currency=5&item_nameid={mId.Groups[1].Value.Trim()}&two_factor=0";
-                Regex rIcoUri = new Regex("\"icon_url\":\"([^\"]*)");
-                Match mIcoUri = rIcoUri.Match(page);
-                result[1] = $"http://steamcommunity-a.akamaihd.net/economy/image/{mIcoUri.Groups[1].Value}/60fx60f";
-                Regex rName = new Regex("<span class=\"market_listing_item_name\" style=\"\">(.*)</span><br/>");
-                Match mName = rName.Match(page);
-                result[2] = mName.Groups[1].Value.Trim();
-                result[3] = mId.Groups[1].Value.Trim();
-
-                //Regex rSpamResponse = new Regex( = "<h3>You've made too many requests recently. Please wait and try your request again later.</h3>");
-
-                return result;
-            }
-            return null;
-        }
-
-        async Task<string> CheckMarketItemAsync(string url, HttpClient client, CancellationToken ct)
-        {
-            try
-            {
-                HttpResponseMessage response = await client.GetAsync(url, ct);
-                var task = response.Content.ReadAsStringAsync();
-                string page = await task;
-                return page;
-            }
-            catch (Exception ex)
-            {
-                tbLogSteam.AppendText(ex.Message + Environment.NewLine);
-            }
-            return "";
-        }
-
-        async Task CheckMarketItemsHistory(CancellationToken ct)
-        {
-            try
-            {
-                var itemsMarket = File.ReadAllText("itemsmarket").Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
-                if (itemsMarket != null)
-                {
-                    var client = new HttpClient();
-
-                    IEnumerable<Task<string>> loadItemsQuery =
-                        from url in itemsMarket select CheckMarketItemAsync(url, client, ct);
-
-                    List<Task<string>> downloadTasks = loadItemsQuery.ToList();
-
-                    while (downloadTasks.Count > 0)
-                    {
-                        Task<string> firstFinishedTask = await Task.WhenAny(downloadTasks);
-                        downloadTasks.Remove(firstFinishedTask);
-                        List<string> parseItem = ParseItemMarket(firstFinishedTask.Result);
-                        if (parseItem != null)
-                        {
-                            AddSteamMarketItem(parseItem);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                tbLogError.Text += $"{DateTime.Now} Возникла ошибка при чтении файла с товарами для отслеживания: {ex.Message}{Environment.NewLine}";
             }
         }
 
@@ -259,6 +190,7 @@ namespace TelegramBot
             {
                 if ((Button)sender == item.bDelete)
                 {
+                    marketItemListChange = true;
                     item.Dispose();
                     wpMarketItems.Children.Remove(item.border);
                     marketItems.Remove(item);
@@ -318,17 +250,6 @@ namespace TelegramBot
             return result;
         }
 
-        private void AddSteamMarketItem(List<string> itemInfo)
-        {
-            if (!String.IsNullOrEmpty(itemInfo[0]) && !String.IsNullOrEmpty(itemInfo[1]) && !String.IsNullOrEmpty(itemInfo[2]))
-            {
-                SteamMarketItem si = new SteamMarketItem(itemInfo);
-                si.bDelete.Click += DelItem;
-                wpMarketItems.Children.Add(si.border);
-                marketItems.Add(si);
-            }
-        }
-
         private void testbtn_Click(object sender, RoutedEventArgs e)
         {
             //
@@ -336,6 +257,7 @@ namespace TelegramBot
 
         private void testbtn1_Click(object sender, RoutedEventArgs e)
         {
+            System.Diagnostics.Process.Start("www.yahoo.com");
             //
         }
 
@@ -371,18 +293,6 @@ namespace TelegramBot
             }
         }
 
-        private void bAddMarketItem_Click(object sender, RoutedEventArgs e)
-        {
-            List<string> result = null;
-            string link = tbLinkMarket.Text;
-            Thread t = new Thread(() => { result = AddMarketItem(link); });
-            t.Start();
-            t.Join();
-            if (result != null)
-                AddSteamMarketItem(result);
-
-            tbLinkMarket.Text = String.Empty;
-        }
 
         private List<string> AddMarketItem(string link)
         {
@@ -403,16 +313,160 @@ namespace TelegramBot
             
         }
 
-        async private void Window_ContentRendered(object sender, EventArgs e)
+        private void Window_ContentRendered(object sender, EventArgs e)
         {
-            cts = new CancellationTokenSource();
-            await CheckMarketItemsHistory(cts.Token);
-            cts = null;
+            LoadSavedItemsList();
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-
+            if (!marketItemListChange)
+            {
+                return;
+            }
+            try
+            {
+                var root = new XElement("Items");
+                foreach (var item in marketItems)
+                {
+                    root.Add(item.ReturnXmlNode());
+                }
+                root.Save(xmlItemsMarketName);
+            }
+            catch (Exception ex)
+            {
+                Logger.Write($"{DateTime.Now}: Ошибка при сохранении списка маркет итемов в файл {ex.Message}");
+            }
         }
+
+#region Items Market 
+
+        private async void bAddMarketItem_Click(object sender, RoutedEventArgs e)
+        {
+            List<string> link = new List<string>();
+            link.Add(tbLinkMarket.Text);
+            await CheckMarketItemsHistory(link);
+            tbLinkMarket.Text = String.Empty;
+            marketItemListChange = true;
+        }
+
+        void LoadSavedItemsList()
+        {
+            XmlDocument doc = new XmlDocument();
+            List<XmlAttributeCollection> values = null;
+            if (File.Exists(xmlItemsMarketName))
+            {
+                values = new List<XmlAttributeCollection>();
+                doc.Load(xmlItemsMarketName);
+                foreach (XmlNode node in doc.SelectNodes("//Item"))
+                {
+                    values.Add(node.Attributes);
+                }
+            }
+            if (values != null && values.Count > 0)
+            {
+                foreach (var item in values)
+                {
+                    List<string> itm = new List<string>()
+                    {
+                        item["itemJsonLink"].Value,
+                        item["itemIcoLink"].Value,
+                        item["itemName"].Value,
+                        item["itemId"].Value,
+                        item["itemMarketLink"].Value
+                    };
+                    AddSteamMarketItem(new SteamMarketItem(itm));
+                }
+            }
+
+            /*IEnumerable<string> itemsMarket = null;
+            try
+            {
+                itemsMarket = File.ReadAllText(marketItemsHistory).Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+            }
+            catch (Exception ex)
+            {
+                tbLogError.AppendText($"{DateTime.Now}: Возникла ошибка при чтении файла с товарами для отслеживания: {ex.Message}{Environment.NewLine}");
+            }
+            await CheckMarketItemsHistory(itemsMarket);*/
+        }
+
+        async Task<SteamMarketItem> CheckMarketItemAsync(string url, HttpClient client, CancellationToken ct)
+        {
+            string page = "";
+            try
+            {
+                HttpResponseMessage response = await client.GetAsync(url, ct);
+                var task = response.Content.ReadAsStringAsync();
+                page = await task;
+            }
+            catch (Exception ex)
+            {
+                tbLogError.AppendText($"{DateTime.Now}: Возникла ошибка при загрузке страницы товара для отслеживания: {ex.Message}{Environment.NewLine}");
+            }
+            if (page != "")
+            {
+                List<string> result = new List<string>()
+                {
+                    "", "", "", "", ""
+                };
+                Regex rId = new Regex("Market_LoadOrderSpread\\((.*)\\);");
+                Match mId = rId.Match(page);
+                result[0] = $"http://steamcommunity.com/market/itemordershistogram?country=RU&language=english&currency=5&item_nameid={mId.Groups[1].Value.Trim()}&two_factor=0";
+                Regex rIcoUri = new Regex("\"icon_url\":\"([^\"]*)");
+                Match mIcoUri = rIcoUri.Match(page);
+                result[1] = $"http://steamcommunity-a.akamaihd.net/economy/image/{mIcoUri.Groups[1].Value}/60fx60f";
+                Regex rName = new Regex("<span class=\"market_listing_item_name\" style=\"\">(.*)</span><br/>");
+                Match mName = rName.Match(page);
+                result[2] = mName.Groups[1].Value.Trim();
+                result[3] = mId.Groups[1].Value.Trim();
+                result[4] = url;
+
+                //Regex rSpamResponse = new Regex( = "<h3>You've made too many requests recently. Please wait and try your request again later.</h3>");
+
+                if (!String.IsNullOrEmpty(result[0]) && !String.IsNullOrEmpty(result[1]) && !String.IsNullOrEmpty(result[2]))
+                {
+                    return new SteamMarketItem(result);
+                }
+            }
+            return null;
+        }
+
+        async Task CheckMarketItemsHistory(IEnumerable<string> itemsMarket)
+        {
+            cts = new CancellationTokenSource();
+            CancellationToken ct = cts.Token;
+            if (itemsMarket != null)
+            {
+                var client = new HttpClient();
+
+                IEnumerable<Task<SteamMarketItem>> loadItemsQuery =
+                    from url in itemsMarket select CheckMarketItemAsync(url, client, ct);
+
+                List<Task<SteamMarketItem>> downloadTasks = loadItemsQuery.ToList();
+
+                while (downloadTasks.Count > 0)
+                {
+                    Task<SteamMarketItem> firstFinishedTask = await Task.WhenAny(downloadTasks);
+                    downloadTasks.Remove(firstFinishedTask);
+                    var steamItem = firstFinishedTask.Result;
+                    if (steamItem != null)
+                    {
+                        AddSteamMarketItem(steamItem);
+                    }
+                }
+            }
+            cts = null;
+        }
+
+        private void AddSteamMarketItem(SteamMarketItem steamItem)
+        {
+            steamItem.InitItem(); //t_Tick(this, null);
+            steamItem.bDelete.Click += DelItem;
+            wpMarketItems.Children.Add(steamItem.border);
+            marketItems.Add(steamItem);
+        }
+
+#endregion
     }
 }

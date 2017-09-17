@@ -82,6 +82,9 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <DockPanel Grid.Column="1">
+                            <TextBlock VerticalAlignment="Center">Фильтр</TextBlock>
+                            <TextBox DockPanel.Dock="Left" x:Name="tbFilter" Width="200" MaxLength="30" Background="AliceBlue" TextChanged="tbFilter_TextChanged" />
+                            <TextBlock VerticalAlignment="Center">Добавить итем</TextBlock>
                             <Button Name="bAddMarketItem" DockPanel.Dock="Right"  Width="50" Click="bAddMarketItem_Click"/>
                             <TextBox DockPanel.Dock="Left" x:Name="tbLinkMarket" MaxLength="250" Background="AliceBlue" />
                         </DockPanel>

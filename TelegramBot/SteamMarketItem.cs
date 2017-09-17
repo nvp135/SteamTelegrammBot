@@ -24,7 +24,7 @@ namespace TelegramBot
         readonly static int UPDATEINTERVAL = 90 * 1000;
         readonly static int width = 160;
 
-        TextBlock tbItemName = new TextBlock()
+        public TextBlock tbItemName = new TextBlock()
         {
             FontSize = 8,
             FontFamily = new FontFamily("Consolas"),

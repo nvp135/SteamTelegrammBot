@@ -460,6 +460,14 @@ namespace TelegramBot
             cts = null;
         }
 
+        private void tbFilter_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            foreach (var item in marketItems)
+            {
+                item.Visibility = item.tbItemName.Text.ToUpper().Contains((sender as TextBox).Text.ToUpper()) ? Visibility.Visible : Visibility.Hidden;
+            }
+        }
+
         private void AddSteamMarketItem(SteamMarketItem steamItem)
         {
             steamItem.InitItem(); //t_Tick(this, null);

@@ -40,6 +40,7 @@ namespace TelegramBot
         public MainWindow()
         {
             InitializeComponent();
+            tc.SelectedIndex = 2;
             tg = Telegram.TelegramInit();
             tCheckAuth.Elapsed += tCheckAuth_Tick;
             CheckAuth();
@@ -329,7 +330,7 @@ namespace TelegramBot
                 var root = new XElement("Items");
                 foreach (var item in marketItems)
                 {
-                    root.Add(item.ReturnXmlNode());
+                    root.Add(item.GetXmlNode());
                 }
                 root.Save(xmlItemsMarketName);
             }

@@ -21,7 +21,7 @@ namespace TelegramBot
         Timer t = new Timer()
         {
             Enabled = false,
-            Interval = 60 * 1000
+            Interval = 90 * 1000
         };
 
         public Twitch(string channel, List<string> users, TextBox tb)
@@ -47,26 +47,27 @@ namespace TelegramBot
                 if ((page != "") && (page != "\"\""))
                 {
                     TwitchJSON result = JsonConvert.DeserializeObject<TwitchJSON>(page);
-                    string sendtext = "";
-                    foreach (var userName in users)
+                    if (result.chatter_count > 0)
                     {
-                        if (!result.chatters.viewers.Contains(userName))
+                        string sendtext = "";
+                        foreach (var userName in users)
                         {
-                            sendtext += $"{DateTime.Now}: пользователя {userName} нет в смотрящих стрима." + Environment.NewLine;
+                            if (!result.chatters.viewers.Contains(userName))
+                            {
+                                sendtext += $"{DateTime.Now}: пользователя {userName} нет в смотрящих стрима." + Environment.NewLine;
+                            }
                         }
+                        if (!String.IsNullOrEmpty(sendtext) && ((DateTime.Now - lastSendedDT) > TimeSpan.FromMinutes(waitTime)))
+                        {
+                            lastSendedDT = DateTime.Now;
+                            tg.SendMessage(sendtext);
+                        }
+                        AddTextToLog("Check users - Result check users sucsessful.");
                     }
-                    if (!String.IsNullOrEmpty(sendtext) && ((DateTime.Now - lastSendedDT) > TimeSpan.FromMinutes(waitTime)))
+                    else
                     {
-                        lastSendedDT = DateTime.Now;
-                        tg.SendMessage(sendtext);
+                        AddTextToLog("Check users - Result xml is empty.");
                     }
-                    AddTextToLog("Check users - Result check users sucsessful.");
-                }
-                else
-                {
-                    string message = $"{DateTime.Now}: Check users - Result xml is empty.";
-                    tg.SendMessage(message);
-                    AddTextToLog("Check users - Result xml is empty.");
                 }
             }
             catch (Exception ex)

@@ -22,6 +22,7 @@ namespace TelegramBot
         List<PriceDate> lPrices;
         readonly string itemJsonLink, itemName, itemId, itemIcoLink, itemMarketLink;
         readonly static int UPDATEINTERVAL = 90 * 1000;
+        readonly static int width = 160;
 
         TextBlock tbItemName = new TextBlock()
         {
@@ -66,7 +67,7 @@ namespace TelegramBot
         public SteamMarketItem(List<string> itemInfo)
         {
             border.Child = this;
-            this.Width = 150;
+            this.Width = width;
             this.Height = 100;
             t.Elapsed += t_Tick;
 
@@ -96,7 +97,7 @@ namespace TelegramBot
             });
             this.ColumnDefinitions.Add(new ColumnDefinition()
             {
-                Width = new GridLength(90, GridUnitType.Pixel)
+                Width = new GridLength(width - 60, GridUnitType.Pixel)
             });
 
             Grid gDescr = new Grid();
@@ -224,18 +225,18 @@ namespace TelegramBot
 
         public async void t_Tick(object source, ElapsedEventArgs e)
         {
-            PriceDate res = await CheckPriceAsync();
-            if (res != null)
-            {
-                lPrices.Insert(0, res);
-            }
             try
             {
+                PriceDate res = await CheckPriceAsync();
+                if (res != null)
+                {
+                    lPrices.Insert(0, res);
+                }
                 UpdatePrices();
             }
             catch (Exception ex)
             {
-                Logger.Write(ex.Message);
+                Logger.Write($"t_Tick error: {ex.Message} / {itemId} / {itemName}");
             }
         }
 
@@ -271,40 +272,47 @@ namespace TelegramBot
             }
             catch (Exception ex)
             {
-                Logger.Write(ex.Message);
+                Logger.Write($"CheckPrice error: {ex.Message} / {itemId} / {itemName}");
             }
         }
 
         private async Task<PriceDate> CheckPriceAsync()
         {
-            using (var httpClient = new HttpClient())
-            using (var stream = await httpClient.GetStreamAsync(itemJsonLink))
-            using (var reader = new StreamReader(stream))
+            try
             {
-                string response = await reader.ReadToEndAsync();
+                using (var httpClient = new HttpClient())
+                using (var stream = await httpClient.GetStreamAsync(itemJsonLink))
+                using (var reader = new StreamReader(stream))
+                {
+                    string response = await reader.ReadToEndAsync();
 
-                if (response == "" || response == "[]")
-                {
-                    SetToolTipUpdate($"{DateTime.Now} empty json");
-                }
-                else
-                {
-                    MarketResponse resp = JsonConvert.DeserializeObject<MarketResponse>(response);
-                    if (resp != null && resp.success)
+                    if (response == "" || response == "[]")
                     {
-                        if (resp.sog != null && resp.sog.Count > 0)
-                        {
-                            SetToolTipUpdate($"{DateTime.Now} success updated");
-                            textblockValues.pricePreffix = resp.price_prefix;
-                            textblockValues.priceSuffix = resp.price_suffix;
-                            return new PriceDate(double.Parse(resp.sog[0][0], CultureInfo.InvariantCulture), DateTime.Now);
-                        }
+                        SetToolTipUpdate($"{DateTime.Now} empty json");
                     }
                     else
                     {
-                        SetToolTipUpdate($"{DateTime.Now} error json");
+                        MarketResponse resp = JsonConvert.DeserializeObject<MarketResponse>(response);
+                        if (resp != null && resp.success)
+                        {
+                            if (resp.sog != null && resp.sog.Count > 0)
+                            {
+                                SetToolTipUpdate($"{DateTime.Now} success updated");
+                                textblockValues.pricePreffix = resp.price_prefix;
+                                textblockValues.priceSuffix = resp.price_suffix;
+                                return new PriceDate(double.Parse(resp.sog[0][0], CultureInfo.InvariantCulture), DateTime.Now);
+                            }
+                        }
+                        else
+                        {
+                            SetToolTipUpdate($"{DateTime.Now} error json");
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                Logger.Write($"CheckPriceAsync error: {ex.Message} / {itemId} / {itemName}");
             }
             return null;
         }
@@ -348,14 +356,14 @@ namespace TelegramBot
             }
         }
 
-        public XElement ReturnXmlNode()
+        public XElement GetXmlNode()
         {
             return new XElement("Item",
-                             new XAttribute("itemMarketLink", itemMarketLink),
-                             new XAttribute("itemName", itemName),
-                             new XAttribute("itemIcoLink", itemIcoLink),
-                             new XAttribute("itemJsonLink", itemJsonLink),
-                             new XAttribute("itemId", itemId)
+								new XAttribute("itemMarketLink", itemMarketLink),
+								new XAttribute("itemName", itemName),
+								new XAttribute("itemIcoLink", itemIcoLink),
+								new XAttribute("itemJsonLink", itemJsonLink),
+								new XAttribute("itemId", itemId)
             );
         }
 
@@ -442,8 +450,19 @@ namespace TelegramBot
                     {
                         dbh.Insert($"insert into [Items] ([market_id], [dt], [price]) values ({id}, '{DateTime.Now}', '{value}')");
                     }
+                    if (startPrice == 0)
+                    {
+                        startPrice = result;
+                    }
                     price = result;
-                    percentPrice = Convert.ToInt32((price - startPrice) / (startPrice / 100));
+                    try
+                    {
+                        percentPrice = Convert.ToInt32((price - startPrice) / (startPrice / 100));
+                    }
+                    catch (OverflowException)
+                    {
+                        percentPrice = 100;
+                    }
                     PriceColor = GetColor(percentPrice);
                     RaisePropertyChanged("Price");
                     IReceivePrice = (price * multiplier).ToString($"{pricePreffix}0.00{priceSuffix}");
@@ -460,7 +479,14 @@ namespace TelegramBot
             set
             {
                 tenMinutes = Convert.ToDouble(value);
-                percentTenMinutes = Convert.ToInt32((tenMinutes - price) / (price / 100));
+                try
+                { 
+                    percentTenMinutes = Convert.ToInt32((tenMinutes - price) / (price / 100));
+                }
+                catch (OverflowException)
+                {
+                    percentTenMinutes = 100;
+                }
                 TenMinutesColor = GetColor(percentTenMinutes);
                 RaisePropertyChanged("TenMinutes");
                 IReceiveTenMinutes = (tenMinutes * multiplier).ToString($"{pricePreffix}0.00{priceSuffix}");
@@ -476,7 +502,14 @@ namespace TelegramBot
             set
             {
                 thirtyMinutes = Convert.ToDouble(value);
-                percentThirtyMinutes = Convert.ToInt32((thirtyMinutes - price) / (price / 100));
+                try
+                {
+                    percentThirtyMinutes = Convert.ToInt32((thirtyMinutes - price) / (price / 100));
+                }
+                catch (OverflowException)
+                {
+                    percentThirtyMinutes = 100;
+                }
                 ThirtyMinutesColor = GetColor(percentThirtyMinutes);
                 RaisePropertyChanged("ThirtyMinutes");
                 IReceiveThirtyMinutes = (thirtyMinutes * multiplier).ToString($"{pricePreffix}0.00{priceSuffix}");
@@ -492,7 +525,14 @@ namespace TelegramBot
             set
             {
                 oneHour = Convert.ToDouble(value);
-                percentOneHour = Convert.ToInt32((oneHour - price) / (price / 100));
+                try
+                {
+                    percentOneHour = Convert.ToInt32((oneHour - price) / (price / 100));
+                }
+                catch (OverflowException)
+                {
+                    percentOneHour = 100;
+                }
                 OneHourColor = GetColor(percentOneHour);
                 RaisePropertyChanged("OneHour");
                 IReceiveOneHour = (oneHour * multiplier).ToString($"{pricePreffix}0.00{priceSuffix}");
@@ -546,12 +586,14 @@ namespace TelegramBot
         {
             if (dif < 0)
                 return Brushes.Yellow;
-            else if (dif < 10)
-                return Brushes.White;
             else if (dif < 20)
+                return Brushes.White;
+            else if (dif < 50)
                 return Brushes.GreenYellow;
-            else
+            else if (dif < 100)
                 return Brushes.Pink;
+            else
+                return Brushes.Plum;
         }
 
         public event PropertyChangedEventHandler PropertyChanged = delegate { };

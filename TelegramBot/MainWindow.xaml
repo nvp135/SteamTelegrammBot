@@ -5,7 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TelegramBot"
         mc:Ignorable="d"
-        Title="TelegramBot" Height="768" Width="1024" ContentRendered="Window_ContentRendered" Closing="Window_Closing">
+        Title="TelegramBot" Height="768" Width="1024" ContentRendered="Window_ContentRendered" Closing="Window_Closing"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized">
     <Grid>
         <TabControl x:Name="tc">
             <TabItem x:Name="tiMonTwitch">

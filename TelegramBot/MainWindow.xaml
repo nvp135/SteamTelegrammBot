@@ -7,9 +7,17 @@
         mc:Ignorable="d"
         Title="TelegramBot" Height="768" Width="1024" ContentRendered="Window_ContentRendered" Closing="Window_Closing"
         WindowStartupLocation="CenterScreen"
-        WindowState="Maximized">
-    <Grid>
-        <TabControl x:Name="tc">
+        WindowState="Maximized" Icon="ico.ico">
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_Файл">
+                <MenuItem Header="_Настройки" Click="MenuItemSettings_Click" />
+                <Separator />
+                <MenuItem Header="_Выход" />
+            </MenuItem>
+        </Menu>
+
+        <TabControl x:Name="tc" Height="Auto" DockPanel.Dock="Bottom">
             <TabItem x:Name="tiMonTwitch">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
@@ -114,7 +122,8 @@
                     </Grid>
                 </TabItem.Content>
             </TabItem>
+
         </TabControl>
-    </Grid>
+    </DockPanel>
 </Window>
     

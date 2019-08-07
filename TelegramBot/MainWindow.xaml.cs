@@ -26,6 +26,7 @@ namespace TelegramBot
         Twitch tw;
         List<SteamProfileItem> profilesItems = new List<SteamProfileItem>();
         List<SteamMarketItem> marketItems = new List<SteamMarketItem>();
+        AppSettings settings;
 
         readonly string xmlItemsMarketName = "ItemsMarket.xml";
 
@@ -47,6 +48,7 @@ namespace TelegramBot
             tCheckAuth.Enabled = true;
             marketItemListChange = false;
             LoadTwitchSettings();
+            ApplicationSettings.InitializeSettings();
         }
 
         private void LoadTwitchSettings()
@@ -253,7 +255,7 @@ namespace TelegramBot
 
         private void testbtn_Click(object sender, RoutedEventArgs e)
         {
-            //
+            ApplicationSettings.EditSettings();
         }
 
         private void testbtn1_Click(object sender, RoutedEventArgs e)
@@ -466,6 +468,11 @@ namespace TelegramBot
             {
                 item.Visibility = item.tbItemName.Text.ToUpper().Contains((sender as TextBox).Text.ToUpper()) ? Visibility.Visible : Visibility.Hidden;
             }
+        }
+
+        private void MenuItemSettings_Click(object sender, RoutedEventArgs e)
+        {
+            new SettingsWindow(ApplicationSettings.settings).ShowDialog();
         }
 
         private void AddSteamMarketItem(SteamMarketItem steamItem)

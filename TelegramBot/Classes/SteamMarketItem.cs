@@ -20,9 +20,9 @@ namespace TelegramBot
     {
         TextBlockValues textblockValues;
         List<PriceDate> lPrices;
-        readonly string itemJsonLink, itemName, itemId, itemIcoLink, itemMarketLink;
-        readonly static int UPDATEINTERVAL = 90 * 1000;
-        readonly static int width = 160;
+        readonly string ITEM_JSON_LINK, ITEM_NAME, ITEM_ID, ITEM_ICO_LINK, ITEM_MARKET_LINK;
+        readonly static int UPDATE_INTERVAL = 90 * 1000;
+        readonly static int WIDTH = 160;
 
         public TextBlock tbItemName = new TextBlock()
         {
@@ -60,28 +60,28 @@ namespace TelegramBot
 
         Timer t = new Timer()
         {
-            Interval = UPDATEINTERVAL,
+            Interval = UPDATE_INTERVAL,
             Enabled = false
         };
 
         public SteamMarketItem(List<string> itemInfo)
         {
             border.Child = this;
-            this.Width = width;
+            this.Width = WIDTH;
             this.Height = 100;
             t.Elapsed += t_Tick;
 
+            ITEM_JSON_LINK = itemInfo[0];
+            ITEM_ICO_LINK = itemInfo[1];
+            ITEM_NAME = itemInfo[2];
+            ITEM_ID = itemInfo[3];
+            ITEM_MARKET_LINK = itemInfo[4];
+
             tbItemName.MouseDown += TbItemName_MouseDown;
-            textblockValues = new TextBlockValues(itemId);
+            textblockValues = new TextBlockValues(ITEM_ID);
 
-            itemJsonLink = itemInfo[0];
-            itemIcoLink = itemInfo[1];
-            itemName = itemInfo[2];
-            itemId = itemInfo[3];
-            itemMarketLink = itemInfo[4];
-
-            tbItemName.Text = itemName;
-            ico.Source = HelpFunctions.GetBitmap(itemIcoLink);
+            tbItemName.Text = ITEM_NAME;
+            ico.Source = HelpFunctions.GetBitmap(ITEM_ICO_LINK);
 
             lPrices = new List<PriceDate>();
 
@@ -97,7 +97,7 @@ namespace TelegramBot
             });
             this.ColumnDefinitions.Add(new ColumnDefinition()
             {
-                Width = new GridLength(width - 60, GridUnitType.Pixel)
+                Width = new GridLength(WIDTH - 60, GridUnitType.Pixel)
             });
 
             Grid gDescr = new Grid();
@@ -236,7 +236,7 @@ namespace TelegramBot
             }
             catch (Exception ex)
             {
-                Logger.Write($"t_Tick error: {ex.Message} / {itemId} / {itemName}");
+                Logger.Write($"t_Tick error: {ex.Message} / {ITEM_ID} / {ITEM_NAME}");
             }
         }
 
@@ -245,7 +245,7 @@ namespace TelegramBot
             pd = null; prefix = suffix = "";
             try
             {
-                string response = HelpFunctions.LoadPage(itemJsonLink);
+                string response = HelpFunctions.LoadPage(ITEM_JSON_LINK);
                 if (response == "" || response == "[]")
                 {
                     SetToolTipUpdate($"{DateTime.Now} empty json");
@@ -272,7 +272,7 @@ namespace TelegramBot
             }
             catch (Exception ex)
             {
-                Logger.Write($"CheckPrice error: {ex.Message} / {itemId} / {itemName}");
+                Logger.Write($"CheckPrice error: {ex.Message} / {ITEM_ID} / {ITEM_NAME}");
             }
         }
 
@@ -281,7 +281,7 @@ namespace TelegramBot
             try
             {
                 using (var httpClient = new HttpClient())
-                using (var stream = await httpClient.GetStreamAsync(itemJsonLink))
+                using (var stream = await httpClient.GetStreamAsync(ITEM_JSON_LINK))
                 using (var reader = new StreamReader(stream))
                 {
                     string response = await reader.ReadToEndAsync();
@@ -312,7 +312,7 @@ namespace TelegramBot
             }
             catch (Exception ex)
             {
-                Logger.Write($"CheckPriceAsync error: {ex.Message} / {itemId} / {itemName}");
+                Logger.Write($"CheckPriceAsync error: {ex.Message} / {ITEM_ID} / {ITEM_NAME}");
             }
             return null;
         }
@@ -352,18 +352,18 @@ namespace TelegramBot
         {
             if( e.LeftButton == System.Windows.Input.MouseButtonState.Pressed && e.ClickCount == 2)
             {
-                System.Diagnostics.Process.Start(itemMarketLink);
+                System.Diagnostics.Process.Start(ITEM_MARKET_LINK);
             }
         }
 
         public XElement GetXmlNode()
         {
             return new XElement("Item",
-								new XAttribute("itemMarketLink", itemMarketLink),
-								new XAttribute("itemName", itemName),
-								new XAttribute("itemIcoLink", itemIcoLink),
-								new XAttribute("itemJsonLink", itemJsonLink),
-								new XAttribute("itemId", itemId)
+								new XAttribute("itemMarketLink", ITEM_MARKET_LINK),
+								new XAttribute("itemName", ITEM_NAME),
+								new XAttribute("itemIcoLink", ITEM_ICO_LINK),
+								new XAttribute("itemJsonLink", ITEM_JSON_LINK),
+								new XAttribute("itemId", ITEM_ID)
             );
         }
 
@@ -375,7 +375,7 @@ namespace TelegramBot
         ~SteamMarketItem()
         {
 #if DEBUG
-            Logger.Write($"{itemName} has been deleted.");
+            Logger.Write($"{ITEM_NAME} has been deleted.");
 #endif
         }
     }
